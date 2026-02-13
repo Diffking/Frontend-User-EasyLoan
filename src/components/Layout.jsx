@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Link, useLocation } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
+import OfflineIndicator from "./OfflineIndicator";
 import {
   IconCreditCard,
   IconUser,
@@ -32,6 +33,9 @@ const Layout = ({ children }) => {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-teal-50 via-cyan-50 to-emerald-50">
+      {/* Offline Indicator */}
+      <OfflineIndicator />
+
       {/* Header */}
       <header className="fixed top-0 left-0 right-0 z-50 bg-gradient-to-r from-teal-500 to-cyan-500 shadow-lg shadow-teal-200/50">
         <div className="flex items-center justify-between h-16 px-4">

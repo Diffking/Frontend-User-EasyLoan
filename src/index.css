@@ -113,3 +113,21 @@ body {
     @apply w-8 h-8 border-4 border-primary-600 border-t-transparent rounded-full animate-spin;
   }
 }
+
+/* Offline Indicator Animation */
+@keyframes slide-down {
+  from { transform: translateY(-100%); opacity: 0; }
+  to { transform: translateY(0); opacity: 1; }
+}
+.animate-slide-down {
+  animation: slide-down 0.3s ease-out;
+}
+
+/* Pull to Refresh Animation */
+@keyframes bounce-down {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(4px); }
+}
+.animate-bounce-down {
+  animation: bounce-down 0.6s ease-in-out infinite;
+}

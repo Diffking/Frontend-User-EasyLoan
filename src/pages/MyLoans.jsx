@@ -1,6 +1,8 @@
-import { useState, useEffect, useRef, useCallback } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { mortgageAPI } from "../api/axios";
 import { useAuth } from "../context/AuthContext";
+import { useAutoRefresh } from "../hooks/useAutoRefresh";
+import PullToRefresh from "../components/PullToRefresh";
 import {
   IconUser,
   IconFile,
@@ -479,6 +481,11 @@ const LoanCard = ({ loan, formatDateShort, formatDate, onHide }) => {
         </div>
       </div>
 
+      {/* Timeline */}
+      <div className="px-5 pb-4">
+        <StepTimeline loan={loan} />
+      </div>
+
       {/* Appointment + Documents — APPROVED only */}
       {loan.current_step_code === "APPROVED" && (
         <>
@@ -511,6 +518,112 @@ const LoanCard = ({ loan, formatDateShort, formatDate, onHide }) => {
   );
 };
 
+/* ── Step Timeline ── */
+const StepTimeline = ({ loan }) => {
+  const [open, setOpen] = useState(false);
+  const history = loan.step_history || loan.histories || [];
+  
+  // ถ้าไม่มี history data แสดง mini timeline จาก current step
+  const currentStep = STEPS[loan.current_step_code] || STEPS.RECEIVED;
+  const stepOrder = currentStep.order;
+
+  const STEP_LIST = [
+    { code: "RECEIVED", name: "รับเรื่อง", order: 1 },
+    { code: "SURVEY", name: "สำรวจหลักทรัพย์", order: 2 },
+    { code: "PENDING_APPROVE", name: "รออนุมัติ", order: 3 },
+    { code: "APPROVED", name: "อนุมัติ", order: 4 },
+    { code: "REJECTED", name: "ไม่อนุมัติ", order: 5 },
+    { code: "COMPLETED", name: "สิ้นสุด", order: 6 },
+  ].filter(s => {
+    // ซ่อน REJECTED ถ้าไม่ได้ถูก reject
+    if (s.code === "REJECTED" && loan.current_step_code !== "REJECTED") return false;
+    // ซ่อน COMPLETED ถ้ายังไม่ถึง
+    if (s.code === "COMPLETED" && loan.current_step_code !== "COMPLETED") return false;
+    return true;
+  });
+
+  return (
+    <div className="rounded-xl border border-teal-100 overflow-hidden bg-gradient-to-br from-teal-50/60 to-cyan-50/40">
+      <button
+        onClick={() => setOpen(!open)}
+        className="w-full flex items-center gap-3 px-4 py-3 active:bg-teal-100/60 transition-colors"
+      >
+        <div className="w-8 h-8 bg-teal-100 rounded-lg flex items-center justify-center shrink-0">
+          <IconClock className="w-4 h-4 text-teal-600" />
+        </div>
+        <div className="flex-1 text-left">
+          <p className="text-sm font-bold text-gray-700">ไทม์ไลน์</p>
+          <p className="text-xs text-gray-400">ขั้นตอนที่ {Math.min(stepOrder, 4)} / {STEP_LIST.length}</p>
+        </div>
+        <div className={`transition-transform duration-300 ${open ? "rotate-180" : ""}`}>
+          <IconChevronDown className="w-5 h-5 text-gray-400" />
+        </div>
+      </button>
+
+      <div
+        className="overflow-hidden transition-all duration-400 ease-in-out"
+        style={{ maxHeight: open ? "800px" : "0", opacity: open ? 1 : 0 }}
+      >
+        <div className="px-5 pb-4 pt-1">
+          {STEP_LIST.map((step, idx) => {
+            const isPassed = step.order < stepOrder;
+            const isCurrent = step.code === loan.current_step_code;
+            const isFuture = step.order > stepOrder;
+            const isLast = idx === STEP_LIST.length - 1;
+
+            // หา date จาก history ถ้ามี
+            const historyEntry = history.find(h => h.step_code === step.code || h.step_id === step.order);
+            const dateStr = historyEntry?.created_at || historyEntry?.date;
+
+            return (
+              <div key={step.code} className="flex gap-3">
+                {/* Timeline line + dot */}
+                <div className="flex flex-col items-center">
+                  <div className={`w-3 h-3 rounded-full border-2 shrink-0 ${
+                    isCurrent 
+                      ? "border-teal-500 bg-teal-500 shadow-md shadow-teal-200" 
+                      : isPassed 
+                        ? "border-teal-400 bg-teal-400" 
+                        : "border-gray-200 bg-white"
+                  }`}>
+                    {isPassed && (
+                      <svg className="w-full h-full text-white" fill="currentColor" viewBox="0 0 20 20">
+                        <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                      </svg>
+                    )}
+                  </div>
+                  {!isLast && (
+                    <div className={`w-0.5 flex-1 min-h-[28px] ${isPassed ? "bg-teal-300" : "bg-gray-100"}`} />
+                  )}
+                </div>
+
+                {/* Content */}
+                <div className={`pb-4 ${isLast ? "pb-1" : ""}`}>
+                  <p className={`text-sm font-semibold leading-tight ${
+                    isCurrent ? "text-teal-700" : isPassed ? "text-gray-600" : "text-gray-300"
+                  }`}>
+                    {step.name}
+                    {isCurrent && (
+                      <span className="ml-2 text-xs bg-teal-100 text-teal-600 px-2 py-0.5 rounded-full font-bold">
+                        ปัจจุบัน
+                      </span>
+                    )}
+                  </p>
+                  {dateStr && (
+                    <p className="text-xs text-gray-400 mt-0.5">
+                      {new Date(dateStr).toLocaleDateString('th-TH', { day: 'numeric', month: 'short', year: '2-digit' })}
+                    </p>
+                  )}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+    </div>
+  );
+};
+
 /* ── Empty ── */
 const EmptyState = () => (
   <div className="bg-white rounded-2xl border border-gray-100 shadow-sm text-center py-16 px-6">
@@ -527,41 +640,31 @@ const EmptyState = () => (
 /* ═══════════════════════════════════════
    Main: MyLoans Page
    ═══════════════════════════════════════ */
-const AUTO_REFRESH_MS = 15_000; // Auto refresh ทุก 15 วินาที
-
 const MyLoans = () => {
   const { user } = useAuth();
   const [loans, setLoans] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [refreshing, setRefreshing] = useState(false);
-  const isFirstLoad = useRef(true);
-  const intervalRef = useRef(null);
 
   const handleHideLoan = (loanId) => {
     setLoans((prev) => prev.filter((l) => l.id !== loanId));
   };
 
+  // ฟังก์ชันดึงข้อมูล
   const fetchMyLoans = useCallback(async () => {
     try {
-      if (!isFirstLoad.current) setRefreshing(true);
       const response = await mortgageAPI.myLoans();
       setLoans(response.data.data || []);
     } catch (error) {
       console.error("Failed to fetch loans:", error);
-      if (isFirstLoad.current) setLoans([]);
     } finally {
       setLoading(false);
-      setRefreshing(false);
-      isFirstLoad.current = false;
     }
   }, []);
 
-  // Initial fetch + Auto refresh ทุก 15 วินาที
-  useEffect(() => {
-    fetchMyLoans();
-    intervalRef.current = setInterval(fetchMyLoans, AUTO_REFRESH_MS);
-    return () => clearInterval(intervalRef.current);
-  }, [fetchMyLoans]);
+  // Auto refresh ทุก 15 วินาที + visibility-aware + offline detection
+  const { refreshing, online, manualRefresh } = useAutoRefresh(fetchMyLoans, {
+    intervalMs: 15_000,
+  });
 
   const formatDate = (dateStr) => {
     if (!dateStr) return "-";
@@ -625,6 +728,7 @@ const MyLoans = () => {
     );
 
   return (
+    <PullToRefresh onRefresh={manualRefresh} refreshing={refreshing}>
     <div className="space-y-5 pb-6">
       {/* Header */}
       <div className="relative bg-gradient-to-br from-teal-500 via-teal-400 to-cyan-400 rounded-2xl p-6 text-white shadow-lg shadow-teal-200/40 overflow-hidden">
@@ -656,6 +760,12 @@ const MyLoans = () => {
         {refreshing && (
           <div className="w-4 h-4 border-2 border-teal-200 border-t-teal-500 rounded-full animate-spin" />
         )}
+        {/* Offline badge */}
+        {!online && (
+          <span className="text-xs bg-red-50 text-red-500 font-medium px-2 py-0.5 rounded-full border border-red-100">
+            ออฟไลน์
+          </span>
+        )}
         {loans.length > 0 && (
           <div className="ml-auto flex items-center gap-1.5">
             <span className="text-xs text-gray-400">ติดตามสัญญา</span>
@@ -683,6 +793,7 @@ const MyLoans = () => {
         </div>
       )}
     </div>
+    </PullToRefresh>
   );
 };
 
