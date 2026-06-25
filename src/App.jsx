@@ -8,6 +8,7 @@ import Login from "./pages/Login";
 import Register from "./pages/Register";
 import MyLoans from "./pages/MyLoans";
 import Profile from "./pages/Profile";
+import CommitteeBorrowers from "./pages/CommitteeBorrowers";
 
 
 // ============================================================
@@ -298,6 +299,16 @@ function App() {
         element={
           <ProtectedRoute>
             <Profile />
+          </ProtectedRoute>
+        }
+      />
+
+      {/* Committee — auto-gated inside the page by isCommitteeMember */}
+      <Route
+        path="/committee-borrowers"
+        element={
+          <ProtectedRoute>
+            <CommitteeBorrowers />
           </ProtectedRoute>
         }
       />

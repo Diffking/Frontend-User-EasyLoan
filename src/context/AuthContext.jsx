@@ -8,7 +8,7 @@ import {
 } from "react";
 import { useNavigate } from "react-router-dom";
 import liff from "@line/liff";
-import { liffAuthAPI, authAPI } from "../api/axios";
+import { liffAuthAPI, authAPI, committeeAPI } from "../api/axios";
 import toast from "react-hot-toast";
 
 const LIFF_ID = "2008944602-9ZeFomU2";
@@ -142,6 +142,7 @@ export const AuthProvider = ({ children }) => {
   const [networkType, setNetworkType] = useState("unknown"); // ✅ ค่าจริง (สำหรับ UI)
   const [wifiDismissed, setWifiDismissed] = useState(false);
   const [isInLineBrowser] = useState(isLineBrowser()); // ✅ export ให้ Login.jsx ใช้
+  const [isCommitteeMember, setIsCommitteeMember] = useState(false);
   const navigate = useNavigate();
 
   const initStarted = useRef(false);
@@ -259,6 +260,21 @@ export const AuthProvider = ({ children }) => {
     initStarted.current = true;
     initializeLiff();
   }, []);
+
+  // ============================================================
+  // ✅ Committee status — เช็คทุกครั้งที่ user login/เปลี่ยน
+  //    เพื่อโชว์/ซ่อนแท็บ "รายชื่อผู้กู้" (auto-detect, ไม่ต้องตั้งค่าเอง)
+  // ============================================================
+  useEffect(() => {
+    if (!user) {
+      setIsCommitteeMember(false);
+      return;
+    }
+    committeeAPI
+      .me()
+      .then((res) => setIsCommitteeMember(!!res?.data?.data?.is_committee_member))
+      .catch(() => setIsCommitteeMember(false));
+  }, [user]);
 
   const initializeLiff = async () => {
     console.log("[Init] Starting... LINE Browser:", isLineBrowser());
@@ -926,6 +942,7 @@ export const AuthProvider = ({ children }) => {
     networkType, // ✅ ค่าจริง (สำหรับ UI)
     wifiDismissed,
     isInLineBrowser, // ✅ ให้ Login.jsx ใช้
+    isCommitteeMember,
     loginWithLine,
     register,
     requestOTP,

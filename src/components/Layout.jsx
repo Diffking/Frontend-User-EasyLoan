@@ -8,20 +8,31 @@ import {
   IconLogout,
   IconMenu,
   IconClose,
+  IconShield,
 } from "./Icons";
 
 const Layout = ({ children }) => {
-  const { user, lineProfile, logout } = useAuth();
+  const { user, lineProfile, logout, isCommitteeMember } = useAuth();
   const location = useLocation();
   const [menuOpen, setMenuOpen] = useState(false);
 
-  // Navigation items for USER only
+  // Navigation items for USER only — "รายชื่อผู้กู้" auto-detected, แสดง
+  // เฉพาะกรรมการที่ active เท่านั้น (เช็คจาก backend ทุกครั้งที่ login)
   const navigation = [
     {
       name: "สินเชื่อของฉัน",
       href: "/my-loans",
       icon: IconCreditCard,
     },
+    ...(isCommitteeMember
+      ? [
+          {
+            name: "รายชื่อผู้กู้",
+            href: "/committee-borrowers",
+            icon: IconShield,
+          },
+        ]
+      : []),
     {
       name: "โปรไฟล์",
       href: "/profile",

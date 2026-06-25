@@ -134,6 +134,12 @@ export const masterAPI = {
   },
 }
 
+// Committee API (คณะกรรมการ — ดูรายชื่อผู้กู้รายเดือน)
+export const committeeAPI = {
+  me: () => api.get('/committee/me'),
+  borrowers: (params) => api.get('/committee/borrowers', { params }), // params: year, month, page, limit
+}
+
 // Profile API
 export const profileAPI = {
   get: () => api.get('/profile'),
