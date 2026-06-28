@@ -139,6 +139,7 @@ export const masterAPI = {
 export const committeeAPI = {
   me: () => api.get('/committee/me'),
   borrowers: (params) => api.get('/committee/borrowers', { params }), // params: year, month, page, limit
+  pdpaStatus: () => api.get('/committee/pdpa-status'),
 }
 
 // Profile API

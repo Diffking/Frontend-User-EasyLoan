@@ -642,7 +642,7 @@ const EmptyState = () => (
    Main: MyLoans Page
    ═══════════════════════════════════════ */
 const MyLoans = () => {
-  const { user } = useAuth();
+  const { user, pdpaConsentRequired } = useAuth();
   const [loans, setLoans] = useState([]);
   const [loading, setLoading] = useState(true);
 
@@ -651,9 +651,12 @@ const MyLoans = () => {
   };
 
   // PDPA: คำขอกู้ที่ยังไม่ตอบยินยอม (committee_consent === null) — ถามทีละรายการ
-  const pendingConsentLoan = loans.find(
-    (l) => l.committee_consent === null || l.committee_consent === undefined,
-  );
+  // แสดงเฉพาะตอนระบบ PDPA เปิดใช้งานแล้ว (Admin เปิดสวิตช์)
+  const pendingConsentLoan = pdpaConsentRequired
+    ? loans.find(
+        (l) => l.committee_consent === null || l.committee_consent === undefined,
+      )
+    : null;
 
   const handleConsentAnswered = (loanId, consent) => {
     setLoans((prev) =>

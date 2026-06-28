@@ -9,6 +9,7 @@ import Register from "./pages/Register";
 import MyLoans from "./pages/MyLoans";
 import Profile from "./pages/Profile";
 import CommitteeBorrowers from "./pages/CommitteeBorrowers";
+import PDPAInfo from "./pages/PDPAInfo";
 
 
 // ============================================================
@@ -309,6 +310,16 @@ function App() {
         element={
           <ProtectedRoute>
             <CommitteeBorrowers />
+          </ProtectedRoute>
+        }
+      />
+
+      {/* PDPA info — gated inside Layout's nav by pdpaInfoPageEnabled */}
+      <Route
+        path="/pdpa-info"
+        element={
+          <ProtectedRoute>
+            <PDPAInfo />
           </ProtectedRoute>
         }
       />
