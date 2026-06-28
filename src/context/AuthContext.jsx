@@ -143,6 +143,8 @@ export const AuthProvider = ({ children }) => {
   const [wifiDismissed, setWifiDismissed] = useState(false);
   const [isInLineBrowser] = useState(isLineBrowser()); // ✅ export ให้ Login.jsx ใช้
   const [isCommitteeMember, setIsCommitteeMember] = useState(false);
+  const [pdpaConsentRequired, setPdpaConsentRequired] = useState(false);
+  const [pdpaInfoPageEnabled, setPdpaInfoPageEnabled] = useState(false);
   const navigate = useNavigate();
 
   const initStarted = useRef(false);
@@ -274,6 +276,17 @@ export const AuthProvider = ({ children }) => {
       .me()
       .then((res) => setIsCommitteeMember(!!res?.data?.data?.is_committee_member))
       .catch(() => setIsCommitteeMember(false));
+
+    committeeAPI
+      .pdpaStatus()
+      .then((res) => {
+        setPdpaConsentRequired(!!res?.data?.data?.consent_required);
+        setPdpaInfoPageEnabled(!!res?.data?.data?.info_page_enabled);
+      })
+      .catch(() => {
+        setPdpaConsentRequired(false);
+        setPdpaInfoPageEnabled(false);
+      });
   }, [user]);
 
   const initializeLiff = async () => {
@@ -943,6 +956,8 @@ export const AuthProvider = ({ children }) => {
     wifiDismissed,
     isInLineBrowser, // ✅ ให้ Login.jsx ใช้
     isCommitteeMember,
+    pdpaConsentRequired,
+    pdpaInfoPageEnabled,
     loginWithLine,
     register,
     requestOTP,

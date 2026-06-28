@@ -9,15 +9,18 @@ import {
   IconMenu,
   IconClose,
   IconShield,
+  IconIdCard,
 } from "./Icons";
 
 const Layout = ({ children }) => {
-  const { user, lineProfile, logout, isCommitteeMember } = useAuth();
+  const { user, lineProfile, logout, isCommitteeMember, pdpaInfoPageEnabled } =
+    useAuth();
   const location = useLocation();
   const [menuOpen, setMenuOpen] = useState(false);
 
   // Navigation items for USER only — "รายชื่อผู้กู้" auto-detected, แสดง
   // เฉพาะกรรมการที่ active เท่านั้น (เช็คจาก backend ทุกครั้งที่ login)
+  // "PDPA" แสดงเฉพาะตอน Admin เปิดสวิตช์ info_page_enabled
   const navigation = [
     {
       name: "สินเชื่อของฉัน",
@@ -30,6 +33,15 @@ const Layout = ({ children }) => {
             name: "รายชื่อผู้กู้",
             href: "/committee-borrowers",
             icon: IconShield,
+          },
+        ]
+      : []),
+    ...(pdpaInfoPageEnabled
+      ? [
+          {
+            name: "PDPA",
+            href: "/pdpa-info",
+            icon: IconIdCard,
           },
         ]
       : []),
