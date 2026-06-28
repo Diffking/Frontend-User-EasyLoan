@@ -94,6 +94,7 @@ export const authAPI = {
 export const mortgageAPI = {
   // สำหรับ Member
   myLoans: () => api.get('/mortgages/my'),
+  setConsent: (id, consent) => api.put(`/mortgages/${id}/consent`, { consent }),
 
   // สำหรับ Officer/Admin
   list: (params) => api.get('/mortgages', { params }),
