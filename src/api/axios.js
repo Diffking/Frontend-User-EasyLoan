@@ -94,6 +94,7 @@ export const authAPI = {
 export const mortgageAPI = {
   // สำหรับ Member
   myLoans: () => api.get('/mortgages/my'),
+  setConsent: (id, consent) => api.put(`/mortgages/${id}/consent`, { consent }),
 
   // สำหรับ Officer/Admin
   list: (params) => api.get('/mortgages', { params }),
@@ -132,6 +133,12 @@ export const masterAPI = {
     update: (id, data) => api.put(`/master/loan-steps/${id}`, data),
     delete: (id) => api.delete(`/master/loan-steps/${id}`),
   },
+}
+
+// Committee API (คณะกรรมการ — ดูรายชื่อผู้กู้รายเดือน)
+export const committeeAPI = {
+  me: () => api.get('/committee/me'),
+  borrowers: (params) => api.get('/committee/borrowers', { params }), // params: year, month, page, limit
 }
 
 // Profile API

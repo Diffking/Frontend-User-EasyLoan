@@ -3,6 +3,7 @@ import { mortgageAPI } from "../api/axios";
 import { useAuth } from "../context/AuthContext";
 import { useAutoRefresh } from "../hooks/useAutoRefresh";
 import PullToRefresh from "../components/PullToRefresh";
+import ConsentPopup from "../components/ConsentPopup";
 import {
   IconUser,
   IconFile,
@@ -649,6 +650,19 @@ const MyLoans = () => {
     setLoans((prev) => prev.filter((l) => l.id !== loanId));
   };
 
+  // PDPA: คำขอกู้ที่ยังไม่ตอบยินยอม (committee_consent === null) — ถามทีละรายการ
+  const pendingConsentLoan = loans.find(
+    (l) => l.committee_consent === null || l.committee_consent === undefined,
+  );
+
+  const handleConsentAnswered = (loanId, consent) => {
+    setLoans((prev) =>
+      prev.map((l) =>
+        l.id === loanId ? { ...l, committee_consent: consent } : l,
+      ),
+    );
+  };
+
   // ฟังก์ชันดึงข้อมูล
   const fetchMyLoans = useCallback(async () => {
     try {
@@ -729,6 +743,9 @@ const MyLoans = () => {
 
   return (
     <PullToRefresh onRefresh={manualRefresh} refreshing={refreshing}>
+    {pendingConsentLoan && (
+      <ConsentPopup loan={pendingConsentLoan} onAnswered={handleConsentAnswered} />
+    )}
     <div className="space-y-5 pb-6">
       {/* Header */}
       <div className="relative bg-gradient-to-br from-teal-500 via-teal-400 to-cyan-400 rounded-2xl p-6 text-white shadow-lg shadow-teal-200/40 overflow-hidden">
