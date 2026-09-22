@@ -8,7 +8,7 @@ import {
 } from "react";
 import { useNavigate } from "react-router-dom";
 import liff from "@line/liff";
-import { liffAuthAPI, authAPI, committeeAPI } from "../api/axios";
+import { liffAuthAPI, authAPI, committeeAPI, setSessionToken } from "../api/axios";
 import toast from "react-hot-toast";
 
 const LIFF_ID = "2008944602-9ZeFomU2";
@@ -307,8 +307,8 @@ export const AuthProvider = ({ children }) => {
       const apiNetType = getNetworkTypeForAPI(); // ✅ API: LINE→cellular
 
       // Step 2: เช็ค stored session
+      // token อยู่ใน httpOnly cookie (JS อ่านไม่ได้) — ถ้า cookie หมดอายุ axios จะ refresh / ส่งกลับไป login เอง
       const storedUser = localStorage.getItem("user");
-      const storedToken = localStorage.getItem("access_token");
 
       // Step 3: LIFF init (พร้อม timeout)
       try {
@@ -331,7 +331,7 @@ export const AuthProvider = ({ children }) => {
       // ===========================================================
 
       // Case A: มี stored session → ใช้เลย
-      if (storedUser && storedToken) {
+      if (storedUser) {
         console.log("[Init] Case A: Restoring stored session");
         try {
           const parsedUser = JSON.parse(storedUser);
@@ -385,8 +385,7 @@ export const AuthProvider = ({ children }) => {
       console.error("[Init] Fatal error:", error);
 
       const storedUser = localStorage.getItem("user");
-      const storedToken = localStorage.getItem("access_token");
-      if (storedUser && storedToken) {
+      if (storedUser) {
         try {
           setUser(JSON.parse(storedUser));
           setIsLoggedIn(true);
@@ -453,14 +452,10 @@ export const AuthProvider = ({ children }) => {
           "Login timeout",
         );
 
-        const {
-          access_token,
-          refresh_token,
-          user: userData,
-        } = loginResponse.data.data;
+        const { access_token, user: userData } = loginResponse.data.data;
 
-        localStorage.setItem("access_token", access_token);
-        localStorage.setItem("refresh_token", refresh_token);
+        // token จริงอยู่ใน httpOnly cookie — เก็บสำรองในหน่วยความจำเท่านั้น
+        setSessionToken(access_token);
         localStorage.setItem("user", JSON.stringify(userData));
 
         setUser(userData);
@@ -727,14 +722,10 @@ export const AuthProvider = ({ children }) => {
             "Auto-login timeout",
           );
 
-          const {
-            access_token,
-            refresh_token,
-            user: userData,
-          } = loginResponse.data.data;
+          const { access_token, user: userData } = loginResponse.data.data;
 
-          localStorage.setItem("access_token", access_token);
-          localStorage.setItem("refresh_token", refresh_token);
+          // token จริงอยู่ใน httpOnly cookie — เก็บสำรองในหน่วยความจำเท่านั้น
+          setSessionToken(access_token);
           localStorage.setItem("user", JSON.stringify(userData));
 
           setUser(userData);
@@ -916,7 +907,18 @@ export const AuthProvider = ({ children }) => {
   // ============================================================
   // ✅ Logout
   // ============================================================
-  const logout = () => {
+  const logout = async () => {
+    // แจ้ง backend ให้ยกเลิก refresh token + ลบ cookie (รอไม่เกิน 3 วิ)
+    try {
+      await Promise.race([
+        authAPI.logout(),
+        new Promise((resolve) => setTimeout(resolve, 3000)),
+      ]);
+    } catch (e) {
+      console.warn("[Logout] API error:", e);
+    }
+    setSessionToken(null);
+
     try {
       if (liff.isLoggedIn?.()) {
         liff.logout();

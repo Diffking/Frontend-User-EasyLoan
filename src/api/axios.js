@@ -2,51 +2,89 @@ import axios from 'axios'
 
 const API_URL = import.meta.env.VITE_API_URL || 'https://api.loanspsc.com'
 
+// ============================================================
+// Session: ใช้ httpOnly cookie ที่ backend ตั้งให้ (JS อ่านไม่ได้ → XSS ขโมย token ไม่ได้)
+// access token สำรองเก็บ "ในหน่วยความจำ" เท่านั้น (ไม่ลง localStorage) เผื่อ browser บางตัวไม่ส่ง cookie
+// ============================================================
+let memoryAccessToken = null
+export const setSessionToken = (token) => {
+  memoryAccessToken = token || null
+}
+
+// ล้าง token เก่าที่เคยเก็บใน localStorage (ก่อนย้ายไปใช้ cookie)
+try {
+  localStorage.removeItem('access_token')
+  localStorage.removeItem('refresh_token')
+} catch (e) {
+  /* ignore */
+}
+
 const api = axios.create({
   baseURL: `${API_URL}/api/v1`,
+  withCredentials: true,
   headers: {
     'Content-Type': 'application/json',
   },
 })
 
-// Request interceptor - add token
+// Request interceptor - แนบ token สำรองจากหน่วยความจำ (ถ้ามี)
 api.interceptors.request.use(
   (config) => {
-    const token = localStorage.getItem('access_token')
-    if (token) {
-      config.headers.Authorization = `Bearer ${token}`
+    if (memoryAccessToken) {
+      config.headers.Authorization = `Bearer ${memoryAccessToken}`
     }
     return config
   },
   (error) => Promise.reject(error)
 )
 
-// Response interceptor - handle token refresh
+// refresh ทีละครั้ง: refresh token ใช้ได้ครั้งเดียว (rotate) ถ้ายิงพร้อมกันหลายตัวจะโดนเตะออก
+let refreshPromise = null
+const refreshSession = () => {
+  if (!refreshPromise) {
+    refreshPromise = axios
+      .post(`${API_URL}/api/v1/auth/refresh`, {}, { withCredentials: true })
+      .then((res) => {
+        setSessionToken(res.data?.data?.access_token)
+        return res
+      })
+      .finally(() => {
+        refreshPromise = null
+      })
+  }
+  return refreshPromise
+}
+
+// กัน redirect วนถ้า session ใช้ไม่ได้ซ้ำๆ
+const AUTH_REDIRECT_KEY = 'auth_redirect_at'
+const redirectToLogin = () => {
+  try {
+    const last = Number(sessionStorage.getItem(AUTH_REDIRECT_KEY) || 0)
+    if (Date.now() - last < 10000) return
+    sessionStorage.setItem(AUTH_REDIRECT_KEY, String(Date.now()))
+  } catch (e) {
+    /* ignore */
+  }
+  localStorage.clear()
+  window.location.href = '/'
+}
+
+// Response interceptor - access token หมดอายุ → refresh ผ่าน cookie แล้วลองใหม่
 api.interceptors.response.use(
   (response) => response,
   async (error) => {
     const originalRequest = error.config
+    const isAuthCall = originalRequest?.url?.startsWith('/auth/')
 
-    if (error.response?.status === 401 && !originalRequest._retry) {
+    if (error.response?.status === 401 && originalRequest && !originalRequest._retry && !isAuthCall) {
       originalRequest._retry = true
 
       try {
-        const refreshToken = localStorage.getItem('refresh_token')
-        if (refreshToken) {
-          const response = await axios.post(`${API_URL}/api/v1/auth/refresh`, {
-            refresh_token: refreshToken,
-          })
-
-          const { access_token, refresh_token: newRefreshToken } = response.data.data
-          localStorage.setItem('access_token', access_token)
-          localStorage.setItem('refresh_token', newRefreshToken)
-
-          originalRequest.headers.Authorization = `Bearer ${access_token}`
-          return api(originalRequest)
-        }
+        await refreshSession()
+        return api(originalRequest)
       } catch (refreshError) {
-        localStorage.clear()
-        window.location.href = '/'
+        setSessionToken(null)
+        redirectToLogin()
         return Promise.reject(refreshError)
       }
     }
